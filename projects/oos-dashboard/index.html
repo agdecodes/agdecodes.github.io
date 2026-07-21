@@ -18,7 +18,7 @@
   <div style="padding:40px;text-align:center;color:#7C8798;font-family:sans-serif;">Loading dashboard…</div>
 </div>
 
-<script type="text/babel" data-presets="react">
+<script type="text/plain" id="app-source">
 const { useState } = React;
 
 // ---- inline icon set ----
@@ -295,6 +295,19 @@ function OOSDashboard() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<OOSDashboard />);
+</script>
+
+<script>
+  // Manually transform the JSX source with the CLASSIC runtime (React.createElement),
+  // avoiding Babel's newer "automatic" runtime which injects an ES module import
+  // statement that fails when run as a plain (non-module) inline script.
+  var src = document.getElementById("app-source").textContent;
+  var output = Babel.transform(src, {
+    presets: [["react", { runtime: "classic" }]]
+  }).code;
+  var script = document.createElement("script");
+  script.textContent = output;
+  document.body.appendChild(script);
 </script>
 </body>
 </html>
