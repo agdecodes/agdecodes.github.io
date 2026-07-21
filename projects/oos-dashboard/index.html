@@ -5,27 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Express OOS Revenue-Loss Assurance | Noon.com KSA Beauty | Abhinav Goyal</title>
 <meta name="description" content="Interactive OOS analytics dashboard — Noon.com KSA Beauty, by Abhinav Goyal" />
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/prop-types@15/prop-types.js"></script>
-<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { margin: 0; background: #F4F5F8; }
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div style="padding:40px;text-align:center;color:#7C8798;font-family:sans-serif;">Loading dashboard…</div>
+</div>
 
 <script type="text/babel" data-presets="react">
 const { useState } = React;
-const {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Legend, ReferenceLine, ReferenceArea
-} = Recharts;
 
-// ---- small inline icon set (no external icon lib needed) ----
+// ---- inline icon set ----
 const Icon = ({ path, color = "currentColor", size = 15 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d={path} />
@@ -65,6 +61,74 @@ const RED = "#E1553F";
 
 function Card({ children, className = "" }) {
   return <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>{children}</div>;
+}
+
+// ---- Pure SVG line chart (no external chart library needed) ----
+function TrendChart({ active }) {
+  const W = 800, H = 300;
+  const padL = 40, padR = 20, padT = 20, padB = 30;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const yMax = 30;
+
+  const xFor = (i) => padL + (i / (TREND.length - 1)) * chartW;
+  const yFor = (v) => padT + chartH - (v / yMax) * chartH;
+
+  const [hover, setHover] = useState(null);
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 500 }}>
+        <rect x={xFor(0)} y={padT} width={xFor(1) - xFor(0)} height={chartH} fill={RED} opacity="0.06" />
+
+        {[0, 5, 10, 15, 20, 25, 30].map((v) => (
+          <g key={v}>
+            <line x1={padL} y1={yFor(v)} x2={W - padR} y2={yFor(v)} stroke="#EAECEF" strokeWidth="1" />
+            <text x={padL - 6} y={yFor(v) + 3} fontSize="9" fill={SLATE} textAnchor="end">{v}%</text>
+          </g>
+        ))}
+
+        <line x1={padL} y1={yFor(25)} x2={W - padR} y2={yFor(25)} stroke={RED} strokeWidth="1.5" strokeDasharray="5 4" />
+        <text x={W - padR} y={yFor(25) - 5} fontSize="10" fontWeight="600" fill={RED} textAnchor="end">25% threshold</text>
+
+        <line x1={xFor(2)} y1={padT} x2={xFor(2)} y2={padT + chartH} stroke={TEAL} strokeWidth="1.5" strokeDasharray="2 3" />
+        <text x={xFor(2)} y={padT - 6} fontSize="9" fontWeight="600" fill={TEAL} textAnchor="middle">fix shipped</text>
+
+        {TREND.map((d, i) => (
+          <text key={d.month} x={xFor(i)} y={H - 8} fontSize="10" fill={SLATE} textAnchor="middle">{d.month}</text>
+        ))}
+
+        {CATS.map((c) => {
+          const isDim = active && active !== c.key;
+          const points = TREND.map((d, i) => `${xFor(i)},${yFor(d[c.key])}`).join(" ");
+          return (
+            <g key={c.key} opacity={isDim ? 0.2 : 1}>
+              <polyline points={points} fill="none" stroke={c.color} strokeWidth={active === c.key ? 3.5 : 2} strokeLinecap="round" strokeLinejoin="round" />
+              {TREND.map((d, i) => (
+                <circle
+                  key={i}
+                  cx={xFor(i)} cy={yFor(d[c.key])} r={active === c.key ? 4.5 : 3.5}
+                  fill="white" stroke={c.color} strokeWidth="2"
+                  onMouseEnter={() => setHover({ i, key: c.key, val: d[c.key] })}
+                  onMouseLeave={() => setHover(null)}
+                  style={{ cursor: "pointer" }}
+                />
+              ))}
+            </g>
+          );
+        })}
+
+        {hover && (
+          <g>
+            <rect x={xFor(hover.i) - 38} y={yFor(hover.val) - 32} width="76" height="22" rx="4" fill={NAVY} opacity="0.92" />
+            <text x={xFor(hover.i)} y={yFor(hover.val) - 17} fontSize="10" fill="white" textAnchor="middle" fontWeight="600">
+              {hover.key.split(" ")[0]}: {hover.val}%
+            </text>
+          </g>
+        )}
+      </svg>
+    </div>
+  );
 }
 
 function OOSDashboard() {
@@ -145,7 +209,7 @@ function OOSDashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-2">
           <div>
             <h3 className="text-sm font-semibold text-[#1F2A44]">Express OOS Revenue-Loss %, by Sub-Category</h3>
-            <p className="text-[11px] text-[#7C8798] mt-0.5">shaded band = pre-fix double-counted readings · tap a chip to isolate a line</p>
+            <p className="text-[11px] text-[#7C8798] mt-0.5">shaded band = pre-fix double-counted readings · tap a chip to isolate a line · hover dots for values</p>
           </div>
           <div className="flex gap-1.5 flex-wrap">
             {CATS.map((c) => (
@@ -165,31 +229,7 @@ function OOSDashboard() {
             ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={TREND} margin={{ top: 5, right: 15, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#EAECEF" vertical={false} />
-            <ReferenceArea x1="Jan" x2="Feb" fill={RED} fillOpacity={0.06} />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fill: SLATE }} />
-            <YAxis tick={{ fontSize: 11, fill: SLATE }} unit="%" domain={[0, 30]} />
-            <ReferenceLine y={25} stroke={RED} strokeDasharray="5 4" strokeWidth={1.5}
-              label={{ value: "25% threshold", position: "insideTopRight", fill: RED, fontSize: 11, fontWeight: 600 }} />
-            <ReferenceLine x="Mar" stroke={TEAL} strokeDasharray="2 2"
-              label={{ value: "fix shipped", position: "top", fill: TEAL, fontSize: 10, fontWeight: 600 }} />
-            <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            {CATS.map((c) => (
-              <Line
-                key={c.key}
-                type="monotone"
-                dataKey={c.key}
-                stroke={c.color}
-                strokeWidth={active === c.key ? 3.5 : 2}
-                strokeOpacity={active && active !== c.key ? 0.2 : 1}
-                dot={{ r: 3 }}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+        <TrendChart active={active} />
       </Card>
 
       <Card className="p-4 md:p-5 mb-5">
